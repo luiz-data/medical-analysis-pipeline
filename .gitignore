@@ -1,0 +1,20 @@
+# Ignorar arquivos de compilação Python
+*.pyc
+*.pyo
+__pycache__/
+
+# Ignorar arquivos de log
+*.log
+
+# Ignorar arquivos do sistema
+.DS_Store
+Thumbs.db
+
+# Ignorar ambientes virtuais Python
+venv/
+
+# Ignorar a pasta de dados brutos
+data/
+
+# Ignorar variáveis de ambiente, incluindo credenciais
+.env
