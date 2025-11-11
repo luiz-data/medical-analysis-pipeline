@@ -15,22 +15,22 @@
 ----------------------------------------------------------------------------------------------------
 
 -- Consulta de Junção Lenta (Inicial)
--- EXPLAIN ANALYZE
--- SELECT COUNT(*)
--- FROM _patients_augmentation p
--- JOIN _encounters_augmentation e ON p.id = e.patient;
+EXPLAIN ANALYZE
+SELECT COUNT(*)
+FROM _patients_augmentation p
+JOIN _encounters_augmentation e ON p.id = e.patient;
 
 -- Consulta de Filtro Lenta (Inicial)
--- EXPLAIN ANALYZE
--- SELECT *
--- FROM _encounters_augmentation
--- WHERE description = 'Patient-initiated visit' AND encounterclass = 'outpatient';
+EXPLAIN ANALYZE
+SELECT *
+FROM _encounters_augmentation
+WHERE description = 'Patient-initiated visit' AND encounterclass = 'outpatient';
 
 -- Consulta de Texto Lenta (Inicial com LIKE)
--- EXPLAIN ANALYZE
--- SELECT id
--- FROM _encounters_augmentation
--- WHERE description LIKE '%Hospitalization%';
+EXPLAIN ANALYZE
+SELECT id
+FROM _encounters_augmentation
+WHERE description LIKE '%Hospitalization%';
 
 
 ----------------------------------------------------------------------------------------------------
