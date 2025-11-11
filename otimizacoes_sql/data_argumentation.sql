@@ -1,20 +1,21 @@
 ----------------------------------------------------------------------------------
--- Data Augmentation for Silver Layer Tables
--- This script generates augmented versions of the Silver Layer tables
--- to simulate larger datasets for testing scalability and query performance.
--- It ensures that generated IDs maintain referential integrity.
+-- Aumento de Dados para Tabelas da Silver Layer
+-- Este script gera versões aumentadas das tabelas da Silver Layer
+-- para simular conjuntos de dados maiores, visando testar a escalabilidade
+-- e o desempenho de consultas. Ele garante que os IDs gerados mantenham
+-- a integridade referencial.
 ----------------------------------------------------------------------------------
 
--- Define the target schema
+-- Define o esquema alvo
 SET search_path TO silver;
 
--- --- 1. Augment SILVER_PAYERS_DIM ---
--- Create augmented payers dimension table
+-- --- 1. Aumentar SILVER_PAYERS_DIM ---
+-- Cria a tabela de dimensão de pagadores aumentada
 CREATE TABLE _payers_augmentation AS
 SELECT * FROM silver_payers_dim LIMIT 0;
 
--- Insert 10 copies of original payers, generating new unique payer_ids
--- This is a smaller augmentation as payers typically don't change as much.
+-- Insere 10 cópias dos pagadores originais, gerando novos payer_ids únicos
+-- Esta é uma aumentação menor, pois os pagadores tipicamente não mudam tanto.
 INSERT INTO _payers_augmentation (
     payer_id, payer_name, silver_processing_timestamp
 )
@@ -28,13 +29,13 @@ JOIN generate_series(1, 10) AS s(i) ON TRUE;
 SELECT count(*) AS total_augmented_payers FROM _payers_augmentation;
 
 
--- --- 2. Augment SILVER_PATIENTS_DIM ---
--- Create augmented patients dimension table
+-- --- 2. Aumentar SILVER_PATIENTS_DIM ---
+-- Cria a tabela de dimensão de pacientes aumentada
 CREATE TABLE _patients_augmentation AS
 SELECT * FROM silver_patients_dim LIMIT 0;
 
--- Insert 10.000 copies of original patients, generating new unique patient_ids.
--- Ensure payer_id also matches augmented payers.
+-- Insere 10.000 cópias dos pacientes originais, gerando novos patient_ids únicos.
+-- Garante que o payer_id também corresponda aos pagadores aumentados.
 INSERT INTO _patients_augmentation (
     patient_id, first_name, last_name, full_name, date_of_birth, gender, age,
     payer_id, payer_name, silver_processing_timestamp
@@ -42,25 +43,25 @@ INSERT INTO _patients_augmentation (
 SELECT
     (s.i || '_' || p.patient_id) AS patient_id,
     p.first_name, p.last_name, p.full_name, p.date_of_birth, p.gender, p.age,
-    (s.i || '_' || p.payer_id) AS payer_id, -- Link to augmented payers
-    pa.payer_name, -- Get augmented payer name
+    (s.i || '_' || p.payer_id) AS payer_id, -- Link para pagadores aumentados
+    pa.payer_name, -- Obtém o nome do pagador aumentado
     p.silver_processing_timestamp
 FROM silver_patients_dim AS p
 JOIN generate_series(1, 10000) AS s(i) ON TRUE
-LEFT JOIN _payers_augmentation AS pa ON (s.i || '_' || p.payer_id) = pa.payer_id; -- Join with augmented payers to get name
--- Note: A LEFT JOIN is used here to ensure patients without a payer_id or with an unaugmented payer_id are still included.
--- The payer_name will be NULL if not found in augmented payers, mirroring original behavior for 'Self-Pay / Unspecified'.
+LEFT JOIN _payers_augmentation AS pa ON (s.i || '_' || p.payer_id) = pa.payer_id; -- Join com pagadores aumentados para obter o nome
+-- Nota: Um LEFT JOIN é usado aqui para garantir que pacientes sem um payer_id ou com um payer_id não aumentado ainda sejam incluídos.
+-- O payer_name será NULL se não encontrado em pagadores aumentados, espelhando o comportamento original para 'Self-Pay / Unspecified'.
 
 SELECT count(*) AS total_augmented_patients FROM _patients_augmentation;
 
 
--- --- 3. Augment SILVER_ENCOUNTERS_FACT ---
--- Create augmented encounters fact table
+-- --- 3. Aumentar SILVER_ENCOUNTERS_FACT ---
+-- Cria a tabela fato de atendimentos aumentada
 CREATE TABLE _encounters_augmentation AS
 SELECT * FROM silver_encounters_fact LIMIT 0;
 
--- Insert 100 copies of original encounters, generating new unique encounter_ids and patient_ids.
--- Ensure patient_id and payer_id link to their respective augmented tables.
+-- Insere 100 cópias dos atendimentos originais, gerando novos encounter_ids e patient_ids únicos.
+-- Garante que patient_id e payer_id se liguem às suas respectivas tabelas aumentadas.
 INSERT INTO _encounters_augmentation (
     encounter_id, patient_id, provider_id, payer_id, encounter_date, discharge_date,
     encounter_type, length_of_stay_days, total_claim_cost, payer_coverage,
@@ -68,27 +69,27 @@ INSERT INTO _encounters_augmentation (
 )
 SELECT
     (s.i || '_' || e.encounter_id) AS encounter_id,
-    (s.i || '_' || e.patient_id) AS patient_id, -- Link to augmented patients
+    (s.i || '_' || e.patient_id) AS patient_id, -- Link para pacientes aumentados
     e.provider_id,
-    (s.i || '_' || e.payer_id) AS payer_id, -- Link to augmented payers
+    (s.i || '_' || e.payer_id) AS payer_id, -- Link para pagadores aumentados
     e.encounter_date, e.discharge_date, e.encounter_type,
     e.length_of_stay_days, e.total_claim_cost, e.payer_coverage,
     e.silver_processing_timestamp
 FROM silver_encounters_fact AS e
 JOIN generate_series(1, 100) AS s(i) ON TRUE
--- No JOIN com _patients_augmentation ou _payers_augmentation aqui, pois os IDs já são gerados para corresponder
+-- Não há JOIN com _patients_augmentation ou _payers_augmentation aqui, pois os IDs já são gerados para corresponder
 -- através da mesma lógica de concatenação 's.i || _'. Isso é mais performático.
 ;
 
 SELECT count(*) AS total_augmented_encounters FROM _encounters_augmentation;
 
 
--- --- 4. Augment SILVER_CLAIMS_FACT ---
--- Create augmented claims fact table
+-- --- 4. Aumentar SILVER_CLAIMS_FACT ---
+-- Cria a tabela fato de sinistros aumentada
 CREATE TABLE _claims_augmentation AS
 SELECT * FROM silver_claims_fact LIMIT 0;
 
--- Insert 100 copies of original claims, generating new unique claim_ids and patient_ids.
+-- Insere 100 cópias dos sinistros originais, gerando novos claim_ids e patient_ids únicos.
 INSERT INTO _claims_augmentation (
     claim_id, patient_id, provider_id, claim_start_date, claim_end_date,
     total_billed_amount, total_paid_amount, patient_responsibility_amount,
@@ -96,7 +97,7 @@ INSERT INTO _claims_augmentation (
 )
 SELECT
     (s.i || '_' || c.claim_id) AS claim_id,
-    (s.i || '_' || c.patient_id) AS patient_id, -- Link to augmented patients
+    (s.i || '_' || c.patient_id) AS patient_id, -- Link para pacientes aumentados
     c.provider_id, c.claim_start_date, c.claim_end_date,
     c.total_billed_amount, c.total_paid_amount, c.patient_responsibility_amount,
     c.silver_processing_timestamp
@@ -106,19 +107,19 @@ JOIN generate_series(1, 100) AS s(i) ON TRUE;
 SELECT count(*) AS total_augmented_claims FROM _claims_augmentation;
 
 
--- --- 5. Augment SILVER_CLAIMS_TRANSACTIONS_FACT ---
--- Create augmented claims transactions fact table
+-- --- 5. Aumentar SILVER_CLAIMS_TRANSACTIONS_FACT ---
+-- Cria a tabela fato de transações de sinistros aumentada
 CREATE TABLE _claims_transactions_augmentation AS
 SELECT * FROM silver_claims_transactions_fact LIMIT 0;
 
--- Insert 100 copies of original transactions, generating new unique transaction_ids and claim_ids.
+-- Insere 100 cópias das transações originais, gerando novos transaction_ids e claim_ids únicos.
 INSERT INTO _claims_transactions_augmentation (
     transaction_id, claim_id, transaction_date, transaction_amount,
     procedure_code, transaction_type, silver_processing_timestamp
 )
 SELECT
     (s.i || '_' || ct.transaction_id) AS transaction_id,
-    (s.i || '_' || ct.claim_id) AS claim_id, -- Link to augmented claims
+    (s.i || '_' || ct.claim_id) AS claim_id, -- Link para sinistros aumentados
     ct.transaction_date, ct.transaction_amount, ct.procedure_code,
     ct.transaction_type, ct.silver_processing_timestamp
 FROM silver_claims_transactions_fact AS ct
@@ -128,10 +129,10 @@ SELECT count(*) AS total_augmented_claims_transactions FROM _claims_transactions
 
 
 ----------------------------------------------------------------------------------
--- Demonstrating JOINs with Augmented Silver Layer Tables
+-- Demonstração de JOINs com Tabelas Aumentadas da Silver Layer
 ----------------------------------------------------------------------------------
 
--- --- Example 1: Patient and their Encounters ---
+-- --- Exemplo 1: Paciente e seus Atendimentos ---
 CREATE TABLE _patient_encounters_join_augmented AS
 SELECT
     pa.patient_id,
@@ -148,9 +149,8 @@ INNER JOIN
 
 SELECT count(*) AS total_patient_encounters_join FROM _patient_encounters_join_augmented;
 
-
--- --- Example 2: Patient and their Claims ---
-CREATE TABLE _patient_claims_join_augmented AS
+-- --- Exemplo 2: Paciente e seus Sinistros ---
+CREATE TABLE  _patient_claims_join_augmented  AS
 SELECT
     pa.patient_id,
     pa.first_name,
@@ -165,8 +165,7 @@ INNER JOIN
 
 SELECT count(*) AS total_patient_claims_join FROM _patient_claims_join_augmented;
 
-
--- --- Example 3: Claims with their Transactions ---
+-- --- Exemplo 3: Sinistros com suas Transações ---
 CREATE TABLE _claim_transactions_join_augmented AS
 SELECT
     ca.claim_id,
@@ -183,7 +182,7 @@ INNER JOIN
 SELECT count(*) AS total_claim_transactions_join FROM _claim_transactions_join_augmented;
 
 
--- --- Example 4: Encounters with Payer Information ---
+-- --- Exemplo 4: Atendimentos com Informações do Pagador ---
 CREATE TABLE _encounter_payer_join_augmented AS
 SELECT
     ea.encounter_id,
@@ -200,7 +199,7 @@ INNER JOIN
 SELECT count(*) AS total_encounter_payer_join FROM _encounter_payer_join_augmented;
 
 
--- --- Example 5: Patients with Payer Information (Primary Payer as per Silver Layer Logic) ---
+-- --- Exemplo 5: Pacientes com Informações do Pagador (Pagador Primário conforme Lógica da Silver Layer) ---
 CREATE TABLE _patient_payer_join_augmented AS
 SELECT
     pa.patient_id,
